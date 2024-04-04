@@ -154,23 +154,17 @@ def simple_sift(patch):
     i_y = filters.sobel_h(patch)
     magnitude = np.sqrt(i_x ** 2 + i_y ** 2)
     orientation = np.arctan2(i_y, i_x)
-    hist_bins = np.linspace(-np.pi/2, np.pi/2, num=8)
+    hist_bins = np.arange(-np.pi, np.pi, np.pi/4)
     # Compute histogram
     for i in range(4):
         for j in range(4):
             for y in range(4):
                 for x in range(4):
-    
-                             
-                    bin_idx = np.digitize(orientation[i*4+y][j*4+x], hist_bins)
-                    if bin_idx == 8: # 
-                        bin_idx = 7
+                    bin_idx = np.digitize(orientation[i*4+y][j*4+x], hist_bins) - 1
                     histogram[i][j][bin_idx] += magnitude[i*4+y][j*4+x] * weights[i*4+y][j*4+x]
-    
     # Normalize
     feature = histogram.flatten()
     feature /= np.linalg.norm(feature)
-
     """ Your code ends here """
 
     return feature
@@ -190,7 +184,6 @@ def top_k_matches(desc1, desc2, k=2):
     
     """ Your code starts here """
     pairwise_distances = cdist(desc1, desc2)
-    
     for i in range(len(pairwise_distances)):
         sorted_indices = np.argsort(pairwise_distances[i])
         match_pairs.append((i, [(sorted_indices[j], pairwise_distances[i][sorted_indices[j]]) for j in range(k)]))
@@ -222,10 +215,9 @@ def ratio_test_match(desc1, desc2, match_threshold):
     top_2_matches = top_k_matches(desc1, desc2)
     
     """ Your code starts here """
-    for idx, [(match_1_idx, match_1_dist), (_, match_2_dist), *_] in top_2_matches:
+    for idx, [(match_1_idx, match_1_dist), (_, match_2_dist)] in top_2_matches:
         if match_1_dist / match_2_dist < match_threshold:
             match_pairs.append([idx, match_1_idx])
-    
     """ Your code ends here """
 
     # Modify this line as you wish
