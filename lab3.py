@@ -347,9 +347,19 @@ def ransac_homography(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_ite
     # RANSAC iteration start
     
     """ Your code starts here """
-    
+    for i in range(n_iters):
+        idx = np.random.choice(N, n_samples, replace=False)
+        src = matched1_unpad[idx]
+        dst = matched2_unpad[idx]
+        H = compute_homography(src, dst)
+        transformed = transform_homography(matched1_unpad, H)
+        inliers = np.linalg.norm(transformed - matched2_unpad, axis=1) < delta
+        if np.sum(inliers) > n_inliers:
+            n_inliers = np.sum(inliers)
+            max_inliers = inliers
+    H = compute_homography(matched1_unpad[max_inliers], matched2_unpad[max_inliers])
     """ Your code ends here """
-    
+
     return H, matches[max_inliers]
 
 ##### Part 3: Mirror Symmetry Detection #####
@@ -459,7 +469,14 @@ def shift_sift_descriptor(desc):
     '''
     
     """ Your code starts here """
-    
+    reshaped = desc.reshape(16, 8)
+    reshaped = np.flip(reshaped, axis=1)
+    reshaped = np.roll(reshaped, 1, axis=1)
+    res = np.zeros_like(reshaped)
+    for i in range(4):
+        for j in range(4):
+            res[i*4+j] = reshaped[(3-i)*4+j]
+    res = res.flatten()
     """ Your code ends here """
     
     return res
@@ -472,7 +489,11 @@ def create_mirror_descriptors(img):
     '''
     
     """ Your code starts here """
-    
+    kps, descs, angles, sizes = compute_cv2_descriptor(img)
+    mir_descs = []
+    for desc in descs:
+        mir_descs.append(shift_sift_descriptor(desc))
+    mir_descs = np.array(mir_descs)
     """ Your code ends here """
     
     return kps, descs, sizes, angles, mir_descs
@@ -489,7 +510,17 @@ def match_mirror_descriptors(descs, mirror_descs, threshold = 0.7):
 
     
     """ Your code starts here """
-    
+    m_desc_elim_matches = [(i, [(j, dist) for j, dist in matches if j != i]) for i, matches in three_matches]
+    for i, matches in m_desc_elim_matches:
+        if len(matches) == 2:
+            if matches[0][1] / matches[1][1] < threshold:
+                match_result.append([i, matches[0][0]])
+        elif len(matches) == 3:
+            if matches[0][1] / matches[1][1] < threshold:
+                match_result.append([i, matches[0][0]])
+            elif matches[1][1] / matches[2][1] < threshold:
+                match_result.append([i, matches[1][0]])    
+    match_result = np.array(match_result)
     """ Your code ends here """
     
     return match_result
@@ -505,7 +536,14 @@ def find_symmetry_lines(matches, kps):
     thetas = []
     
     """ Your code starts here """
-    
+    for i, j in matches:
+        I = kps[i]
+        J = kps[j]
+        angle = angle_with_x_axis(I, J)
+        mid = midpoint(I, J)
+        rho = mid[1] * np.cos(angle) + mid[0] * np.sin(angle)
+        rhos.append(rho)
+        thetas.append(angle)
     """ Your code ends here """
     
     return rhos, thetas
@@ -520,7 +558,17 @@ def hough_vote_mirror(matches, kps, im_shape, window=1, threshold=0.5, num_lines
     rhos, thetas = find_symmetry_lines(matches, kps)
     
     """ Your code starts here """
-    
+    diagonal = int(np.hypot(im_shape[0], im_shape[1]))
+    hspace = np.zeros((2*diagonal, 360))
+    thetas = np.array(thetas) * 180 / np.pi
+    thetas = thetas.astype(int)
+    for rho, theta in zip(rhos, thetas):
+        rho_to_add = int(rho + diagonal)
+        hspace[rho_to_add, theta] += 1
+    peak_params = find_peak_params(hspace, [np.arange(-diagonal, diagonal), np.arange(0, 360)], window, threshold)
+    rho_values, theta_values = peak_params[1], peak_params[2]
+    print(rho_values, theta_values)
+    # rho_values, theta_values = rho_values[:num_lines], theta_values[:num_lines]
     """ Your code ends here """
     
     return rho_values, theta_values
