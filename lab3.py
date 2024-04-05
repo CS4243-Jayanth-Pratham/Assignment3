@@ -559,16 +559,16 @@ def hough_vote_mirror(matches, kps, im_shape, window=1, threshold=0.5, num_lines
     
     """ Your code starts here """
     diagonal = int(np.hypot(im_shape[0], im_shape[1]))
-    hspace = np.zeros((2*diagonal, 360))
+    hspace = np.zeros((2*diagonal + 1, 360))
     thetas = np.array(thetas) * 180 / np.pi
     thetas = thetas.astype(int)
     for rho, theta in zip(rhos, thetas):
         rho_to_add = int(rho + diagonal)
         hspace[rho_to_add, theta] += 1
-    peak_params = find_peak_params(hspace, [np.arange(-diagonal, diagonal), np.arange(0, 360)], window, threshold)
+    peak_params = find_peak_params(hspace, [np.arange(-diagonal, diagonal + 1), np.arange(0, 360)], window, threshold)
     rho_values, theta_values = peak_params[1], peak_params[2]
-    print(rho_values, theta_values)
-    # rho_values, theta_values = rho_values[:num_lines], theta_values[:num_lines]
+    theta_values = np.array(theta_values) * np.pi / 180
+    rho_values, theta_values = rho_values[-num_lines:], theta_values[-num_lines:]
     """ Your code ends here """
     
     return rho_values, theta_values
