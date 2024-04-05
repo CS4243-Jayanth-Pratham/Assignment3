@@ -292,27 +292,22 @@ def compute_homography(src, dst):
   
     """ Your code starts here """
     src_mean = np.mean(src, axis=0)
-    src_std = np.std(src, axis=0)  /np.sqrt(2)
-
-    T = np.array([[1/src_std[0], 0, -src_mean[0]/src_std[0]], [0, 1/src_std[1], -src_mean[1]/src_std[1]], [0, 0, 1]])
-    # Normalize the points
-    src = np.insert(src, 2, values=1, axis=1)
-    src = T.dot(src.transpose()).transpose()
+    src_std = np.std(src, axis=0) / np.sqrt(2)
+    T_src = np.array([[1/src_std[0], 0, -src_mean[0]/src_std[0]], [0, 1/src_std[1], -src_mean[1]/src_std[1]], [0, 0, 1]])
+    src = transform_homography(src, T_src)
 
     dst_mean = np.mean(dst, axis=0)
-    dst_std = np.std(dst, axis=0) /np.sqrt(2)
+    dst_std = np.std(dst, axis=0) / np.sqrt(2)
     T_dst = np.array([[1/dst_std[0], 0, -dst_mean[0]/dst_std[0]], [0, 1/dst_std[1], -dst_mean[1]/dst_std[1]], [0, 0, 1]])
-    dst = np.insert(dst, 2, values=1, axis=1)
-    dst = T_dst.dot(dst.transpose()).transpose()
+    dst = transform_homography(dst, T_dst)
 
     A = np.zeros((2*src.shape[0], 9))
     for i in range(src.shape[0]):
-        A[2*i] = np.array([0, 0, 0, -src[i][0], -src[i][1], -1, dst[i][1]*src[i][0], dst[i][1]*src[i][1], dst[i][1]])
-        A[2*i+1] = np.array([src[i][0], src[i][1], 1, 0, 0, 0, -dst[i][0]*src[i][0], -dst[i][0]*src[i][1], -dst[i][0]])
+        A[2*i] = np.array([-src[i][0], -src[i][1], -1, 0, 0, 0, src[i][0]*dst[i][0], src[i][1]*dst[i][0], dst[i][0]])
+        A[2*i+1] = np.array([0, 0, 0, -src[i][0], -src[i][1], -1, src[i][0]*dst[i][1], src[i][1]*dst[i][1], dst[i][1]])
     _, _, V = np.linalg.svd(A)
     h_matrix = V[-1].reshape(3, 3)
-    h_matrix = np.linalg.inv(T_dst).dot(h_matrix).dot(T)
-    
+    h_matrix = np.linalg.inv(T_dst).dot(h_matrix).dot(T_src)
     """ Your code ends here """
 
     return h_matrix
